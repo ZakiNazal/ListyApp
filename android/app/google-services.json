@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "274411483319",
+    "project_id": "listyapp-29eee",
+    "storage_bucket": "listyapp-29eee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:274411483319:android:8b68b669a7729496ce1d32",
+        "android_client_info": {
+          "package_name": "com.example.listyapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmTCKN8rwEfDxhVx8gfUtvLO1viwkZbx4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,57 @@
+name: listyapp
+description: "Listy App - shared lists and requests."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^4.12.1
+  firebase_auth: ^6.5.6
+  cloud_firestore: ^6.7.1
+
+  # State management + routing
+  flutter_riverpod: ^2.6.1
+  go_router: ^17.3.0
+
+  # Contacts / inviting
+  # flutter_contacts 2.x exposes its own permissions API
+  # (FlutterContacts.permissions), so no separate permissions plugin is needed.
+  flutter_contacts: ^2.3.1
+  # url_launcher opens a pre-filled SMS to the contact being invited.
+  # NOTE: share_plus was used here originally but its Android build has not
+  # migrated to AGP 9's built-in Kotlin support, so it fails to compile
+  # (fluttercommunity/plus_plugins#3745). Downgrading AGP is not an option
+  # because flutter_contacts 2.2+ *requires* built-in Kotlin.
+  url_launcher: ^6.3.1
+
+  # UI
+  google_fonts: ^8.2.1
+  # Two of the supplied icons ship as SVG. flutter_svg is pure Dart with no
+  # Android module, so it sidesteps the AGP 9 problem that killed share_plus.
+  flutter_svg: ^2.0.10
+
+  # Local prefs (language choice)
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/logo/
