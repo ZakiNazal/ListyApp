@@ -9,7 +9,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/list_repository.dart';
-import '../../data/repositories/user_repository.dart';
 import '../../widgets/app_icon.dart';
 import '../drawer/app_drawer.dart';
 
@@ -23,16 +22,8 @@ class AppShell extends ConsumerWidget {
 
   static const _tabs = <({String route, String label, String icon})>[
     (route: Routes.home, label: AppStrings.home, icon: AppAssets.home),
-    (
-      route: Routes.request,
-      label: AppStrings.request,
-      icon: AppAssets.request,
-    ),
-    (
-      route: Routes.profile,
-      label: AppStrings.profile,
-      icon: AppAssets.profile,
-    ),
+    (route: Routes.request, label: AppStrings.request, icon: AppAssets.request),
+    (route: Routes.profile, label: AppStrings.profile, icon: AppAssets.profile),
   ];
 
   String get _title => switch (location) {
@@ -51,15 +42,19 @@ class AppShell extends ConsumerWidget {
     final uid = ref.watch(authStateProvider).valueOrNull?.uid;
     final incoming = ref.watch(incomingListsProvider);
     final outgoingProgress = ref.watch(outgoingProgressListsProvider);
-    
+
     final allNotifications = [...incoming, ...outgoingProgress];
     final notificationCount = allNotifications.where((l) {
-      final activity = l.lastActivityAt ?? l.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final activity =
+          l.lastActivityAt ??
+          l.createdAt ??
+          DateTime.fromMillisecondsSinceEpoch(0);
       if (l.ownerUid == uid) {
         final readAt = l.ownerReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         return activity.isAfter(readAt);
       } else {
-        final readAt = l.assigneeReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final readAt =
+            l.assigneeReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         return activity.isAfter(readAt);
       }
     }).length;
@@ -115,9 +110,9 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: AppColors.white, border: Border(
-          top: BorderSide(color: AppColors.gray30, width: 1),
-        ),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border(top: BorderSide(color: AppColors.gray30, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -171,11 +166,7 @@ class _NavItem extends StatelessWidget {
 }
 
 class TabTransition extends StatefulWidget {
-  const TabTransition({
-    super.key,
-    required this.index,
-    required this.children,
-  });
+  const TabTransition({super.key, required this.index, required this.children});
 
   final int index;
   final List<Widget> children;
@@ -237,10 +228,7 @@ class _TabTransitionState extends State<TabTransition>
         if (!isCurrent && !isPrevious) {
           return Offstage(
             offstage: true,
-            child: TickerMode(
-              enabled: false,
-              child: widget.children[i],
-            ),
+            child: TickerMode(enabled: false, child: widget.children[i]),
           );
         }
 
@@ -258,13 +246,9 @@ class _TabTransitionState extends State<TabTransition>
           }
 
           child = SlideTransition(
-            position: Tween<Offset>(
-              begin: Offset.zero,
-              end: endOffset,
-            ).animate(CurvedAnimation(
-              parent: _controller,
-              curve: Curves.easeOutCubic,
-            )),
+            position: Tween<Offset>(begin: Offset.zero, end: endOffset).animate(
+              CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+            ),
             child: child,
           );
         } else if (isCurrent && _previousIndex != null) {
@@ -279,21 +263,18 @@ class _TabTransitionState extends State<TabTransition>
           }
 
           child = SlideTransition(
-            position: Tween<Offset>(
-              begin: beginOffset,
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: _controller,
-              curve: Curves.easeOutCubic,
-            )),
+            position: Tween<Offset>(begin: beginOffset, end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           );
         }
 
-        return TickerMode(
-          enabled: isCurrent,
-          child: child,
-        );
+        return TickerMode(enabled: isCurrent, child: child);
       }),
     );
   }

@@ -1,17 +1,23 @@
-# listyapp
+# ListyApp 📝
 
-A new Flutter project.
+ListyApp is a collaborative list-sharing application built with Flutter and Firebase. It allows users to create tasks, grocery lists, or any other type of checklist and assign them directly to friends or contacts. 
 
-## Getting Started
+## Features ✨
 
-This project is a starting point for a Flutter application.
+* **Shared Lists:** Create lists and assign them to friends. Whether it's chores, shopping, or shared goals, you can track progress together.
+* **Real-time Sync:** Powered by Firebase Firestore, lists and their statuses update in real-time across devices.
+* **Friend Management:** Connect with other users, send invites, and manage your contacts seamlessly within the app.
+* **Notifications:** Stay up to date with in-app notifications for new list requests, accepted invites, and completed lists.
+* **Task Tracking:** Lists have distinct statuses (`Pending`, `Accepted`, `Completed`) and automatically track individual item completion.
+* **Profile & Auth:** Secure authentication and user profiles powered by Firebase Auth. 
 
-A few resources to get you started if this is your first Flutter project:
+## Tech Stack 🛠️
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+* **Frontend:** Flutter
+* **State Management:** Riverpod
+* **Routing:** GoRouter
+* **Backend & Database:** Firebase Auth, Cloud Firestore
+* **UI/UX:** Google Fonts, Cupertino Icons, custom SVG assets
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+*Note: This project focuses on providing a seamless, real-time collaboration experience for personal productivity and shared responsibilities.*

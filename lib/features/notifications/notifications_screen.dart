@@ -91,12 +91,16 @@ class _NotificationRow extends ConsumerWidget {
   final String? myUid;
 
   bool _isUnread() {
-    final activity = list.lastActivityAt ?? list.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final activity =
+        list.lastActivityAt ??
+        list.createdAt ??
+        DateTime.fromMillisecondsSinceEpoch(0);
     if (list.ownerUid == myUid) {
       final readAt = list.ownerReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return activity.isAfter(readAt);
     } else {
-      final readAt = list.assigneeReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final readAt =
+          list.assigneeReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return activity.isAfter(readAt);
     }
   }
@@ -132,7 +136,7 @@ class _NotificationRow extends ConsumerWidget {
         context.push(Routes.listDetail(list.id));
       },
       child: Container(
-        color: unread ? AppColors.primary.withOpacity(0.05) : null,
+        color: unread ? AppColors.primary.withValues(alpha: 0.05) : null,
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.gutter,
           vertical: 14,
