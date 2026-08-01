@@ -23,8 +23,11 @@ class UpcomingListsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupsAsync = ref.watch(listsWithItemsProvider);
-    final incoming = ref.watch(incomingListsProvider);
-    final incomingIds = incoming.map((l) => l.id).toSet();
+    // Active only: a denied or completed list is not upcoming work.
+    final incomingIds = ref
+        .watch(incomingActiveListsProvider)
+        .map((l) => l.id)
+        .toSet();
 
     return Scaffold(
       appBar: AppBar(
@@ -39,12 +42,16 @@ class UpcomingListsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => _Message(text: AppStrings.genericError),
         data: (groups) {
-          // Waiting on you = sent to you, and not every item ticked off.
+          // Waiting on you = sent to you, still active, and something is
+          // neither ticked nor marked missing. The old test only looked at
+          // `done`, so a list finished entirely by marking things missing
+          // stayed here forever.
           final pending = groups
               .where(
                 (g) =>
                     incomingIds.contains(g.list.id) &&
-                    (g.items.isEmpty || g.items.any((i) => !i.done)),
+                    (g.items.isEmpty ||
+                        g.items.any((i) => !i.done && !i.isMissing)),
               )
               .toList(growable: false);
 
@@ -73,7 +80,9 @@ class _UpcomingRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sender = ref.watch(userLabelProvider(group.list.ownerUid));
     final total = group.items.length;
-    final done = group.items.where((i) => i.done).length;
+    // Missing counts as handled -- the progress line should agree with the
+    // filter above, otherwise a list reads "2 of 5 done" but never appears.
+    final done = group.items.where((i) => i.done || i.isMissing).length;
 
     return InkWell(
       onTap: () => context.push(Routes.listDetail(group.list.id)),
@@ -102,6 +111,27 @@ class _UpcomingRow extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // Without this the recipient has to open every list to find
+                  // the ones still waiting on an accept or deny.
+                  if (group.list.status == ListStatus.pending) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        AppStrings.needsResponse,
+                        style: AppTextStyles.profileMeta.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

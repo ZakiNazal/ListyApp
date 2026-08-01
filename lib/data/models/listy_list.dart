@@ -20,6 +20,7 @@ class ListyList {
     this.lastActivityAt,
     this.ownerReadAt,
     this.assigneeReadAt,
+    this.hiddenFor = const [],
   });
 
   final String id;
@@ -38,6 +39,21 @@ class ListyList {
   final DateTime? ownerReadAt;
   final DateTime? assigneeReadAt;
 
+  /// Uids that have dismissed this list from their own view.
+  ///
+  /// Deleting outright is owner-only, but a recipient still needs a way to get
+  /// an unwanted list off their screen without destroying it for the sender.
+  final List<String> hiddenFor;
+
+  bool isHiddenFor(String? uid) => uid != null && hiddenFor.contains(uid);
+
+  /// Every item ticked or marked missing.
+  bool get allHandled => itemCount > 0 && doneCount >= itemCount;
+
+  /// Still needs work from the assignee: accepted (or untouched) and unfinished.
+  bool get isActive =>
+      status != ListStatus.denied && status != ListStatus.completed;
+
   factory ListyList.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, dynamic>{};
     return ListyList(
@@ -55,6 +71,8 @@ class ListyList {
           (data['createdAt'] as Timestamp?)?.toDate(),
       ownerReadAt: (data['ownerReadAt'] as Timestamp?)?.toDate(),
       assigneeReadAt: (data['assigneeReadAt'] as Timestamp?)?.toDate(),
+      hiddenFor:
+          (data['hiddenFor'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   }
 
@@ -75,12 +93,14 @@ class ListyList {
         'createdAt': FieldValue.serverTimestamp(),
         'lastActivityAt': FieldValue.serverTimestamp(),
         'ownerReadAt': FieldValue.serverTimestamp(),
+        'hiddenFor': <String>[],
       };
 }
 
 enum ListStatus {
   pending,
   accepted,
+  denied,
   completed;
 
   static ListStatus fromName(String? name) => ListStatus.values.firstWhere(

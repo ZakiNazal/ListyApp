@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/phone_utils.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/push_repository.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/avatar.dart';
 
@@ -118,8 +119,22 @@ class AppDrawer extends ConsumerWidget {
                     icon: Icons.logout_rounded,
                     label: AppStrings.logOut,
                     onTap: () async {
+                      // Read everything before the drawer closes. Popping
+                      // disposes this element, and `ref` cannot be touched
+                      // afterwards -- the signOut read below used to run after
+                      // an await and threw "Cannot use ref after the widget was
+                      // disposed".
+                      final uid = ref.read(authStateProvider).valueOrNull?.uid;
+                      final push = ref.read(pushRepositoryProvider);
+                      final auth = ref.read(authRepositoryProvider);
+
                       Navigator.of(context).pop();
-                      await ref.read(authRepositoryProvider).signOut();
+
+                      // Drop this device's push token first, or the phone keeps
+                      // receiving notifications for an account that is no
+                      // longer signed in on it.
+                      if (uid != null) await push.unregister(uid);
+                      await auth.signOut();
                     },
                   ),
                   const SizedBox(height: 8),

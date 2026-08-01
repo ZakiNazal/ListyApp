@@ -9,6 +9,7 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/otp_screen.dart';
 import '../../features/friends/invited_friends_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/lists/edit_list_screen.dart';
 import '../../features/lists/item_lists_screen.dart';
 import '../../features/lists/list_detail_screen.dart';
 import '../../features/lists/upcoming_lists_screen.dart';
@@ -31,6 +32,7 @@ abstract final class Routes {
   static const invitedFriends = '/friends';
   static const notifications = '/notifications';
   static const about = '/about';
+  static const editList = '/edit-list';
 
   /// Detail for one list, e.g. `/lists/abc123`.
   static String listDetail(String listId) => '$itemLists/$listId';
@@ -80,10 +82,16 @@ class _AuthRefreshNotifier extends ChangeNotifier {
   void ping() => notifyListeners();
 }
 
+/// The root navigator, exposed so code outside the widget tree can reach the
+/// app's [Overlay] -- specifically [TopBanner], which has to draw above every
+/// Scaffold rather than inside one.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ref.watch(_routerRefreshProvider);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: Routes.splash,
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -174,6 +182,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ListDetailScreen(listId: state.pathParameters['listId']!),
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.editList,
+        builder: (_, state) {
+          final args = state.extra as Map<String, dynamic>?;
+          if (args == null) return const HomeScreen();
+          return EditListScreen(
+            list: args['list'],
+            items: args['items'],
+          );
+        },
       ),
       GoRoute(
         path: Routes.upcomingLists,

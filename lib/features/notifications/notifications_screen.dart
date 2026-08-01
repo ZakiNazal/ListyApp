@@ -8,50 +8,60 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
-import '../../data/models/listy_list.dart';
+import '../../data/models/activity_notification.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../../data/repositories/list_repository.dart';
 import '../../data/repositories/user_repository.dart';
-import '../../widgets/app_icon.dart';
 import '../../widgets/app_back_button.dart';
 import '../../widgets/app_chevron.dart';
+import '../../widgets/app_icon.dart';
 
-/// Reached from the bell in the app bar. The Figma file draws the bell but no
-/// notifications frame, so this lists incoming lists -- the ones assigned to
-/// the signed-in user by someone else -- using the file's row styles.
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() =>
-      _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   @override
+  void initState() {
+    super.initState();
+    // Mark notifications as seen when entering the screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final uid = ref.read(authStateProvider).valueOrNull?.uid;
+      if (uid != null) {
+        ref.read(userRepositoryProvider).markNotificationsSeen(uid);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final uid = ref.watch(authStateProvider).valueOrNull?.uid;
-    final listsAsync = ref.watch(myListsProvider);
+    
+    if (uid == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(AppStrings.notifications),
+          leading: const AppBackButton(),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final notificationsAsync = ref.watch(userNotificationsProvider(uid));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.notifications),
         leading: const AppBackButton(),
       ),
-      body: listsAsync.when(
+      body: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Text(AppStrings.genericError, style: AppTextStyles.body),
         ),
-        data: (lists) {
-          final notifications = lists
-              .where((l) {
-                if (l.ownerUid != uid) return true; // incoming
-                if (l.doneCount > 0) return true; // outgoing with progress
-                return false;
-              })
-              .toList(growable: false);
-
+        data: (notifications) {
           if (notifications.isEmpty) {
             return Center(
               child: Padding(
@@ -65,18 +75,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             );
           }
 
-          final sorted = notifications.toList()
-            ..sort(
-              (a, b) => (b.lastActivityAt ?? b.createdAt ?? DateTime.now())
-                  .compareTo(a.lastActivityAt ?? a.createdAt ?? DateTime.now()),
-            );
-
           return ListView.separated(
-            itemCount: sorted.length,
-            separatorBuilder: (_, _) =>
-                const Divider(height: 1, indent: AppTheme.gutter),
-            itemBuilder: (context, i) =>
-                _NotificationRow(list: sorted[i], myUid: uid),
+            itemCount: notifications.length,
+            separatorBuilder: (_, _) => const Divider(height: 1, indent: AppTheme.gutter),
+            itemBuilder: (context, i) => _NotificationRow(
+              notification: notifications[i],
+              myUid: uid,
+            ),
           );
         },
       ),
@@ -85,55 +90,23 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 }
 
 class _NotificationRow extends ConsumerWidget {
-  const _NotificationRow({required this.list, required this.myUid});
+  const _NotificationRow({required this.notification, required this.myUid});
 
-  final ListyList list;
-  final String? myUid;
-
-  bool _isUnread() {
-    final activity =
-        list.lastActivityAt ??
-        list.createdAt ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-    if (list.ownerUid == myUid) {
-      final readAt = list.ownerReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return activity.isAfter(readAt);
-    } else {
-      final readAt =
-          list.assigneeReadAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return activity.isAfter(readAt);
-    }
-  }
+  final ActivityNotification notification;
+  final String myUid;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOutgoing = list.ownerUid == myUid;
-    // Show the other person's name
-    final otherUid = isOutgoing ? list.assignedToUid : list.ownerUid;
-    final otherName = ref.watch(userLabelProvider(otherUid));
-
-    String subtitle;
-    if (isOutgoing) {
-      if (list.doneCount >= list.itemCount && list.itemCount > 0) {
-        subtitle = '$otherName finished the list!';
-      } else {
-        subtitle =
-            '$otherName ticked off ${list.doneCount} of ${list.itemCount} items';
-      }
-    } else {
-      subtitle =
-          '$otherName sent ${list.itemCount} '
-          '${list.itemCount == 1 ? 'item' : 'items'}';
-    }
-
-    final unread = _isUnread();
+    final unread = !notification.isRead;
 
     return InkWell(
       onTap: () {
-        if (unread && myUid != null) {
-          ref.read(listRepositoryProvider).markListRead(list.id, isOutgoing);
+        if (unread) {
+          ref.read(userRepositoryProvider).markNotificationRead(myUid, notification.id);
         }
-        context.push(Routes.listDetail(list.id));
+        if (notification.listId.isNotEmpty) {
+          context.push(Routes.listDetail(notification.listId));
+        }
       },
       child: Container(
         color: unread ? AppColors.primary.withValues(alpha: 0.05) : null,
@@ -167,24 +140,14 @@ class _NotificationRow extends ConsumerWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    list.title,
-                    style: AppTextStyles.rowLabelBold,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.profileMeta,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              child: Text(
+                notification.message,
+                style: unread ? AppTextStyles.rowLabelBold : AppTextStyles.rowLabel,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 8),
             const AppChevron(size: 14, color: AppColors.gray30),
           ],
         ),

@@ -74,6 +74,14 @@ abstract final class AppStrings {
   static const deleteListBody =
       'This removes the list for both of you. It cannot be undone.';
   static const delete = 'Delete';
+  static const remove = 'Remove';
+  static const removeFromMyLists = 'Remove from my lists';
+  static const removeFromMyListsBody =
+      'This hides the list for you only. The sender keeps their copy.';
+  static const listDenied = 'You declined this list';
+  static const undoDeny = 'Accept instead';
+  static const listCompleted = 'All items handled';
+  static const needsResponse = 'Needs your response';
   static String sentTo(String name) => 'Sent to $name';
   static String receivedFrom(String name) => 'From $name';
   static String doneOf(int done, int total) => '$done of $total done';

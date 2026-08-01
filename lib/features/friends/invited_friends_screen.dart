@@ -24,6 +24,10 @@ class InvitedFriendsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final invitesAsync = ref.watch(myInvitesProvider);
 
+    // Fire-and-forget: checks whether any invited number has since registered
+    // and stamps acceptedUid, which is what flips the row to "Joined".
+    ref.watch(resolveInvitesProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.invitedFriends),

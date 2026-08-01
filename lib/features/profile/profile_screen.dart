@@ -23,7 +23,9 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final upcoming = ref.watch(incomingListsProvider).length;
+    // Active only, so a denied or finished list stops counting as work.
+    final upcoming = ref.watch(incomingActiveListsProvider).length;
+    final needsResponse = ref.watch(pendingResponseCountProvider);
     final lists = ref.watch(listStatsProvider).lists;
     final invites = ref.watch(myInvitesProvider).valueOrNull?.length ?? 0;
 
@@ -39,6 +41,8 @@ class ProfileScreen extends ConsumerWidget {
           icon: AppAssets.clipboard,
           label: AppStrings.upcomingLists,
           badge: upcoming,
+          // An unanswered list is more urgent than an unfinished one.
+          highlightBadge: needsResponse > 0,
           onTap: () => context.push(Routes.upcomingLists),
         ),
         const SizedBox(height: 12),
@@ -70,12 +74,17 @@ class _NavCard extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.badge = 0,
+    this.highlightBadge = false,
   });
 
   final String icon;
   final String label;
   final VoidCallback onTap;
   final int badge;
+
+  /// Paints the count in the accent colour when it needs attention rather than
+  /// merely being non-zero.
+  final bool highlightBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -110,10 +119,19 @@ class _NavCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.gray5,
+                    color: highlightBadge
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.gray5,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text('$badge', style: AppTextStyles.cardCaption),
+                  child: Text(
+                    '$badge',
+                    style: AppTextStyles.cardCaption.copyWith(
+                      color: highlightBadge
+                          ? AppColors.primary
+                          : AppColors.label,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 10),
               ],

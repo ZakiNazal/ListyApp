@@ -38,11 +38,44 @@ service cloud.firestore {
       allow create: if isSelf(uid)
                     && request.resource.data.phone is string
                     && request.resource.data.phone.size() > 0;
+      // Covers displayName, lastSeenNotifications and fcmTokens. The phone is
+      // pinned so a client cannot move their profile onto a number that
+      // belongs to someone else's session.
       allow update: if isSelf(uid)
-                    // Never let a client move their profile onto another phone
-                    // that already belongs to someone else's session.
                     && request.resource.data.phone == resource.data.phone;
       allow delete: if false;
+
+      // -------------------------------------------------------------------
+      // users/{uid}/notifications/{id}
+      //
+      // Only the owner reads their own feed. Anyone signed in may WRITE to
+      // someone else's feed -- that is how "X finished your list" reaches the
+      // sender without a Cloud Function.
+      //
+      // `allow create: if signedIn()` alone would let any account inject
+      // arbitrary text into any other account's notifications, so the payload
+      // is pinned down: the sender must stamp their own uid, the message is
+      // length-capped, and it must start unread. That makes every notification
+      // attributable and bounded.
+      // -------------------------------------------------------------------
+      match /notifications/{notificationId} {
+        allow read: if isSelf(uid);
+
+        allow create: if signedIn()
+                      && request.resource.data.fromUid == request.auth.uid
+                      && request.resource.data.message is string
+                      && request.resource.data.message.size() > 0
+                      && request.resource.data.message.size() <= 300
+                      && request.resource.data.listId is string
+                      && request.resource.data.isRead == false;
+
+        // Only the recipient can mark it read, and only that flag may move.
+        allow update: if isSelf(uid)
+                      && request.resource.data.fromUid == resource.data.fromUid
+                      && request.resource.data.message == resource.data.message;
+
+        allow delete: if isSelf(uid);
+      }
     }
 
     // ---------------------------------------------------------------------
@@ -72,12 +105,35 @@ service cloud.firestore {
                     && request.resource.data.title.size() <= 200
                     && request.resource.data.memberUids.size() <= 2;
 
-      // Members may update status/itemCount but may not reassign the list or
-      // hand ownership to someone else.
+      // Members may update status, counters, read markers and their own
+      // hiddenFor entry -- but may not reassign the list, hand over ownership,
+      // change who can see it, or rewrite when it was created.
+      //
+      // createdAt is pinned because the edit window below is measured from it;
+      // without this a client could backdate a list and edit it forever.
       allow update: if isMember()
                     && isIncomingMember()
                     && request.resource.data.ownerUid == resource.data.ownerUid
-                    && request.resource.data.memberUids == resource.data.memberUids;
+                    && request.resource.data.assignedToUid == resource.data.assignedToUid
+                    && request.resource.data.memberUids == resource.data.memberUids
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && editAllowed();
+
+      // Title and item count may only change while the owner is still inside
+      // the 15-minute edit window. This was enforced only in the UI before, so
+      // anyone calling the SDK directly could rewrite a list indefinitely.
+      //
+      // itemCount is included as well as title: adding or removing items late
+      // would otherwise leave the list coherent-looking but unbounded. Ticking
+      // items only moves doneCount and status, so the recipient is unaffected.
+      function editAllowed() {
+        return (request.resource.data.title == resource.data.title
+                && request.resource.data.itemCount == resource.data.itemCount)
+               || (request.auth.uid == resource.data.ownerUid
+                   && resource.data.createdAt != null
+                   && request.time < resource.data.createdAt
+                        + duration.value(15, 'm'));
+      }
 
       // Only the owner can remove a list.
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
@@ -117,6 +173,7 @@ service cloud.firestore {
         allow create: if isIncomingMember()
                       && request.resource.data.memberUids is list
                       && request.resource.data.memberUids.size() <= 2
+                      && request.resource.data.ownerUid == request.auth.uid
                       && request.resource.data.name is string
                       && request.resource.data.name.size() > 0
                       && request.resource.data.name.size() <= 200
@@ -124,12 +181,35 @@ service cloud.firestore {
                       && request.resource.data.quantity >= 0
                       && request.resource.data.quantity <= 9999;
 
-        // Ticking an item off must not let anyone rewrite who can see it.
+        // Ticking an item off must not let anyone rewrite who can see it, and
+        // must not let the assignee rename items or change quantities -- that
+        // is the sender's content. The assignee may only move done/isMissing.
+        //
+        // ownerUid is denormalised onto the item so this needs no get(). A
+        // get() here would bill a document read on every single tick, and on
+        // every item of a list being deleted.
+        //
+        // The 15-minute window is enforced on the parent list document, which
+        // is where title and itemCount live -- an item rename cannot produce a
+        // coherent edit on its own.
         allow update: if isMember()
                       && request.resource.data.memberUids
-                         == resource.data.memberUids;
+                         == resource.data.memberUids
+                      && request.resource.data.ownerUid == resource.data.ownerUid
+                      && (
+                        isItemOwner()
+                        || (request.resource.data.name == resource.data.name
+                            && request.resource.data.quantity
+                               == resource.data.quantity)
+                      );
 
-        allow delete: if isMember();
+        // Only the sender removes items -- both when editing and when the whole
+        // list is deleted.
+        allow delete: if isItemOwner();
+
+        function isItemOwner() {
+          return signedIn() && resource.data.ownerUid == request.auth.uid;
+        }
       }
     }
 
@@ -145,6 +225,13 @@ service cloud.firestore {
         return signedIn() && resource.data.invitedByUid == request.auth.uid;
       }
 
+      // Strictly the inviter's own records.
+      //
+      // The invitee is deliberately NOT given read access. Resolving "has this
+      // person joined?" happens on the inviter's side by matching the phone
+      // against the users collection -- letting the invitee query invites by
+      // phone would need a rule the query cannot prove, which Firestore rejects
+      // outright (rules constrain queries, they do not filter them).
       allow read, delete: if isInviter();
 
       allow create: if signedIn()

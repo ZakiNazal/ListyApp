@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:listyapp/data/repositories/user_repository.dart';
 
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_colors.dart';
@@ -94,18 +95,29 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     setState(() => _sending = true);
 
     try {
-      await ref
+      final listId = await ref
           .read(listRepositoryProvider)
           .createList(
             title: _listNameController.text,
             ownerUid: uid,
             assignedToUid: assignedTo,
-            items: [
-              for (final item in _items)
-                DraftItem(name: item.controller.text, quantity: item.quantity),
-            ],
+            items: _items
+                .map(
+                  (e) =>
+                      DraftItem(name: e.controller.text, quantity: e.quantity),
+                )
+                .toList(),
           );
 
+      await ref
+          .read(userRepositoryProvider)
+          .sendNotification(
+            targetUid: assignedTo,
+            fromUid: uid,
+            listId: listId,
+            message:
+                'Sent you a new list: "${_listNameController.text.trim()}"',
+          );
       if (!mounted) return;
       setState(() => _sending = false);
       await showListSentSheet(context, recipientName);

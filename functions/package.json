@@ -1,0 +1,16 @@
+{
+  "name": "listyapp-functions",
+  "description": "Push notifications for Listy App",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "private": true,
+  "allowScripts": {
+    "protobufjs@7.6.5": true
+  }
+}

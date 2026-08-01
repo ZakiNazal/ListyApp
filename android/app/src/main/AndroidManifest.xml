@@ -7,6 +7,10 @@
     <!-- Firebase Auth and Firestore. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Android 13+ requires an explicit runtime grant to post notifications.
+         firebase_messaging's requestPermission() triggers the prompt. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Listy"
         android:name="${applicationName}"
@@ -35,6 +39,13 @@
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Must match the channelId the Cloud Function sends, or Android
+             drops the notification into a default channel the user cannot
+             control separately. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="listy_lists" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

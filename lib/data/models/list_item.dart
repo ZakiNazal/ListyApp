@@ -8,6 +8,7 @@ class ListItem {
     required this.name,
     required this.quantity,
     this.done = false,
+    this.isMissing = false,
     this.createdAt,
   });
 
@@ -15,6 +16,7 @@ class ListItem {
   final String name;
   final int quantity;
   final bool done;
+  final bool isMissing;
   final DateTime? createdAt;
 
   factory ListItem.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -24,26 +26,33 @@ class ListItem {
       name: (data['name'] as String?) ?? '',
       quantity: (data['quantity'] as num?)?.toInt() ?? 0,
       done: (data['done'] as bool?) ?? false,
+      isMissing: (data['isMissing'] as bool?) ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
 
-  /// [memberUids] is denormalised from the parent list -- see the items block
-  /// in firestore.rules for why the rules cannot read it from the parent.
-  Map<String, dynamic> toMap({required List<String> memberUids}) =>
-      <String, dynamic>{
-        'name': name,
-        'quantity': quantity,
-        'done': done,
-        'memberUids': memberUids,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
+  /// [memberUids] and [ownerUid] are denormalised from the parent list -- see
+  /// the items block in firestore.rules for why the rules cannot read them from
+  /// the parent, and why doing so would bill a read on every tick.
+  Map<String, dynamic> toMap({
+    required List<String> memberUids,
+    required String ownerUid,
+  }) => <String, dynamic>{
+    'name': name,
+    'quantity': quantity,
+    'done': done,
+    'isMissing': isMissing,
+    'memberUids': memberUids,
+    'ownerUid': ownerUid,
+    'createdAt': FieldValue.serverTimestamp(),
+  };
 
-  ListItem copyWith({String? name, int? quantity, bool? done}) => ListItem(
+  ListItem copyWith({String? name, int? quantity, bool? done, bool? isMissing}) => ListItem(
         id: id,
         name: name ?? this.name,
         quantity: quantity ?? this.quantity,
         done: done ?? this.done,
+        isMissing: isMissing ?? this.isMissing,
         createdAt: createdAt,
       );
 }
@@ -58,14 +67,18 @@ class DraftItem {
 
   bool get isEmpty => name.trim().isEmpty;
 
-  /// [memberUids] must match the parent list's, or the security rules will
-  /// reject the write.
-  Map<String, dynamic> toMap({required List<String> memberUids}) =>
-      <String, dynamic>{
-        'name': name.trim(),
-        'quantity': quantity,
-        'done': false,
-        'memberUids': memberUids,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
+  /// [memberUids] and [ownerUid] must match the parent list's, or the security
+  /// rules will reject the write.
+  Map<String, dynamic> toMap({
+    required List<String> memberUids,
+    required String ownerUid,
+  }) => <String, dynamic>{
+    'name': name.trim(),
+    'quantity': quantity,
+    'done': false,
+    'isMissing': false,
+    'memberUids': memberUids,
+    'ownerUid': ownerUid,
+    'createdAt': FieldValue.serverTimestamp(),
+  };
 }

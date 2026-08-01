@@ -45,4 +45,7 @@ abstract final class AppColors {
 
   /// Disabled button fill (the greyed-out "Send" button).
   static const Color disabled = Color(0xFF979797);
+
+  /// Error color for denied lists or missing items
+  static const Color error = Color(0xFFFF3B30);
 }
